@@ -42,8 +42,8 @@ def ensureMergeable(project, mergeRequestId):
     if allowedUsersId is not None and mergeRequest.author['id'] not in allowedUsersId:
         raise BotException("Sorry, you dont have permission to merge this project!")
 
-    if mergeRequest.target_branch != 'master':
-        raise BotException("As a security check I only accept merge requests to master")
+    if mergeRequest.target_branch not in ['main', 'master']:
+        raise BotException("As a security check I only accept merge requests to main or master")
 
     if mergeRequest.source_project_id != mergeRequest.target_project_id:
         raise BotException("Sorry, Cant merge to different project!")
