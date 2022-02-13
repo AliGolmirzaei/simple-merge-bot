@@ -1,6 +1,6 @@
 # simple merge bot
 
-This project is a very simple GitLab merge robot. I intentionally kept the code very simple to make it easily understandable and get forked and developed.
+This project is a very simple GitLab merge robot. I intentionally kept the code very simple to make it easily understandable and get forked and developed (which is the main reason I'm making this project open source).
 
 # What it does
 * First the bot monitor all projects it is a member of
