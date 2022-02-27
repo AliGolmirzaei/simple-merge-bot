@@ -1,25 +1,20 @@
 # simple merge bot
 
-This project is a very simple GitLab merge robot. I intentionally kept the code very simple to make it easily understandable and get forked and developed (which is the main reason I'm making this project open source).
+This project is a very simple GitLab merge robot. I developed it for a very special use case but I noticed how simple it was relative to my expectation when I started it. So I decided to make it open source to give a starting point and a bit of courage to anyone who needs to develop a GitLab bot.
+
+#Why I developed this
+1- In our company we were using Gitlab semi-linear merge history. In such a case whenever you want to merge you need to have a linear history (there shouldn't be any commit on the target branch which is not in the source branch). So you always need to rebase your source branch before merging. Then after merging, git creates a merge commit on the destination branch for you. And there is a consequence. Your merge commit won't get into the source branch and then on the next merge you need to rebase the source branch. And then whoever has the source branch will get annoyed by the need of fixing their local branch history. And guess what, most developers are not git pros. They get confused on how to fix errors when they push/merge into develop branch. At first, my solution was to rebase the develop branch with master just after merging. But it was a burden! So I decided to have a bot carry my burden.
+
+2- The next issue I faced was redundant CICD pipelines. Probably you are familiar with Gitlab "Auto-cancel redundant pipelines" setting. With this setting whenever you push multiple times to a branch older pipelines get canceled. But unfortunately, this won't work with triggered pipelines. What is the use case? We are using StrAPI and NextJs SSG (static site generation) to power our website and linked StrAPI webhook to our NextJs project pipeline trigger. So that when content changes the app will get built again having the latest content. Now if the content provider does multiple changes there would be many running pipelines in our NextJs project which are redundant. We cancel these redundant pipelines by the bot. The awesome part is, it is only 20 lines of code =)
+
 
 # What it does
-* First the bot monitor all projects it is a member of
-* Then it monitors all merge request which is assigned to him
-* On assigning a merge request it starts the process of merging by checking if a rebase is required or not. It detects such cases by checking the merge method of GitLab. On linear and semi-linear history it is needed to rebase the branch first which is done by the robot.
-* Then it checks if a successful pipeline is needed for merge request or not (it is defined in GitLab project > Setting > General > Merge checks). If a successful pipeline is needed it waits for the pipeline to complete successfully
-* Then it checks if the branch is mergeable. There are multiple checkings here
-  * First we can define some kind of authority that only accept merge request if they are created by someone specific. By default bot allows everyone
-  * Then we can allow only a specific branch as the destination. By default, it only allows merging into main and master.
-  * Currently the bot doesn't allow to merge to a different project
-  * And finally it checks for some states. Work in progress MRs are not allowed to merge. If there are unresolved discussions it's not allowed to merge. If MR status is not open it cannot be merged. If the assignee of MR gets changed during the procedure it stops merging
-* At this step bot tries to accept the merge 
-* If merge is successful and merge methods is semi-linear it tries to bring the merge commit which is getting created in the destination branch to the source branch
-* Then it checks messages in MR and if there is a message started with "tag" text it tries to create the tag with release notes defined in the message
+* Just read the code from main function. 
 
 # How to run it
 * First create a user in your GitLab for the bot. 
 * Then get the API token of the bot user. 
-* Make bot a maintainer of your project. 
-* Edit the main.py and put API token and your GitLab URL in `privateToken` and `gitlabUrl` respectively
+* Make bot as a maintainer of your project. 
+* Set `GITLAB_URL` and `BOT_API_KEY` environment variable or edit the main.py and put them as `gitlabUrl` and `privateToken` respectively
 * Run the bot with python3 main.py. I personally run it inside a docker container
 * Enjoy!
