@@ -17,6 +17,7 @@ PIPELINE_TIMEOUT_SECONDS = 1.5 * 3600
 MERGE_STATUS_TIMEOUT_SECONDS = 30
 MERGE_TIMEOUT_SECONDS = 30
 REBASE_TIMEOUT_SECONDS = 30
+PIPELINE_CANCEL_TIMEOUT_SECONDS = 30
 
 gl = gitlab.Gitlab(gitlabUrl, private_token=privateToken)
 gl.auth()
@@ -260,10 +261,34 @@ async def handleMergeRequests(project):
             await processMergeRequest(project, mergeRequest.iid)
 
 
+async def cancelRedundantPipelines(project):
+    pendingPipelines = project.pipelines.list(status='pending')
+    runningPipelines = project.pipelines.list(status='running')
+    for source, pipelineSource in {'pending': pendingPipelines, 'running': runningPipelines}.items():
+        refs = set(map(lambda x: x.ref, pipelineSource))
+        groupedPipelinesByRef = [[y for y in pipelineSource if y.ref == x] for x in refs]
+        for pipelines in groupedPipelinesByRef:
+            if len(pipelines) > 1:
+                logging.info(f'cancelling redundant {source} pipelines in project {project.name}')
+                sortedPipelines = sorted(pipelines, key=lambda x: x.id)
+                for pipeline in sortedPipelines[:-1]:
+                    pipeline.cancel()
+                    start = time.time()
+                    while True:
+                        if time.time() - start > PIPELINE_CANCEL_TIMEOUT_SECONDS:
+                            raise BotException('Pipeline cancel timed out')
+                        await asyncio.sleep(2)
+                        pl = project.pipelines.get(pipeline.id)
+                        if pl.status not in ['pending', 'running']:
+                            break
+                        logging.info('waiting for pipeline to be canceled')
+
+
 async def processProject(project):
     while True:
         try:
             await handleMergeRequests(project)
+            await cancelRedundantPipelines(project)
             await asyncio.sleep(MAIN_ITERATE_DELAY)
         except:
             logging.error(f'something went wrong in project {project.name}')
