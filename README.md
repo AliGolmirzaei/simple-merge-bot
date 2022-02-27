@@ -12,10 +12,10 @@ This project is a very simple GitLab merge robot. I developed it for a very spec
 Just read the code from main function. As a reference:
 * It monitors assignment of MRs and merge them
     * rebase the source branch if needed
-    * wait for pipline to success
+    * wait for pipeline to succeed
     * rebase the source branch after merge
     * create a tag from master if requested
-* cancel old pending and running pipelines which are on same branch
+* cancel old pending and running pipelines which are on the same branch
 
 # How to run it
 * First create a user in your GitLab for the bot. 
