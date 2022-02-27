@@ -1,14 +1,16 @@
 import asyncio
+import logging
+import os
 import re
 import time
 import traceback
-import logging
+
 import gitlab
 
-privateToken = 'your-api-token'
-gitlabUrl = 'https://your.gitlab.domain'
+gitlabUrl = = os.getenv('GITLAB_URL', 'your-gitlab-url')
+privateToken = os.getenv('BOT_API_KEY', 'your-api-token')
 
-MAIN_ITERATE_DELAY = 5
+MAIN_ITERATE_DELAY = 20
 PROJECT_GATHERING_DELAY = 60 * 10
 
 PIPELINE_TIMEOUT_SECONDS = 1.5 * 3600
@@ -23,6 +25,7 @@ botUserId = gl.user.id
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO)
 
+
 class BotException(Exception):
     def __init__(self, message):
         super().__init__(message)
@@ -30,8 +33,8 @@ class BotException(Exception):
 
 
 def getAccessibleUsersOfProject(project):
-    if project.id == 52:  # your project id
-        return [33, 3] # id of users which have permission to merge
+    # if project.id == 52:  # your project id
+    #     return [33, 3] # id of users which have permission to merge
     return None # allow anyone
 
 
@@ -92,7 +95,7 @@ def getMergeRequestById(project, mergeRequestId, includeRebase=False, includeDiv
                                      include_diverged_commits_count=includeDivergedCommits)
 
 
-async def waitForPipleIfNeeded(project, mergeRequestId):
+async def waitForPipelineIfNeeded(project, mergeRequestId):
     delay = 5
     if project.only_allow_merge_if_pipeline_succeeds:
         logging.info("checking pipeline status")
@@ -140,7 +143,8 @@ def acceptMerge(project, mergeRequestId):
     except gitlab.GitlabHttpError as e:
         logging.error(f'merge error: "{e.response_body}"')
         if e.response_code == 405:
-            raise BotException("cannot merge because one of Draft, Closed, Pipeline Pending Completion, or Failed while requiring Success")
+            raise BotException(
+                "cannot merge because one of Draft, Closed, Pipeline Pending Completion, or Failed while requiring Success")
         elif e.response_code == 406:
             raise BotException("cannot merge because of a conflict")
         elif e.response_code == 409:
@@ -228,7 +232,7 @@ async def processMergeRequest(project, mergeRequestId):
 
         # self.maybe_reapprove(merge_request, approvals)
 
-        await waitForPipleIfNeeded(project, mergeRequestId)
+        await waitForPipelineIfNeeded(project, mergeRequestId)
 
         await waitForMergeCheckingDone(project, mergeRequestId)
 
@@ -248,14 +252,18 @@ async def processMergeRequest(project, mergeRequestId):
         sendCommentToMergeRequest(project, mergeRequestId, e.message)
 
 
+async def handleMergeRequests(project):
+    mergeRequests = project.mergerequests.list(assignee_id=botUserId, state="opened")
+    for mergeRequest in mergeRequests:
+        if mergeRequest.assignee and mergeRequest.assignee.get('id') == botUserId:
+            logging.info(f'Hey this merge request is mine id: {mergeRequest.iid} - title: "{mergeRequest.title}"')
+            await processMergeRequest(project, mergeRequest.iid)
+
+
 async def processProject(project):
     while True:
         try:
-            mergeRequests = project.mergerequests.list(assignee_id=botUserId, state="opened")
-            for mergeRequest in mergeRequests:
-                if mergeRequest.assignee and mergeRequest.assignee.get('id') == botUserId:
-                    logging.info(f'Hey this merge request is mine id: {mergeRequest.iid} - title: "{mergeRequest.title}"')
-                    await processMergeRequest(project, mergeRequest.iid)
+            await handleMergeRequests(project)
             await asyncio.sleep(MAIN_ITERATE_DELAY)
         except:
             logging.error(f'something went wrong in project {project.name}')
