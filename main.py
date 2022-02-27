@@ -202,7 +202,7 @@ def createTagIfNeeded(project, mergeRequestId):
     comments = mr.notes.list(per_page=50)
     ids = getAccessibleUsersOfProject(project)
     for comment in comments:
-        if comment.author['id'] in ids:
+        if ids and comment.author['id'] in ids:
             m = comment.body
             if m.startswith('tag'):
                 logging.info('It seems I need to tag something')
