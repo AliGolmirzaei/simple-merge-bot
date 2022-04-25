@@ -22,5 +22,5 @@ Just read the code from main function. As a reference:
 * Then get the API token of the bot user. 
 * Make bot as a maintainer of your project. 
 * Set `GITLAB_URL` and `BOT_API_KEY` environment variable or edit the main.py and put them as `gitlabUrl` and `privateToken` respectively
-* Run the bot with python3 main.py. I personally run it inside a docker container
+* Run the bot with python3 main.py. I personally run it inside a docker container. If you are interested in how I do it I recommend you reading [my article](https://medium.com/@a.golmirzaei/how-to-automate-your-devops-using-gitlab-ci-cd-docker-ansible-part2-69257e1033e2)
 * Enjoy!
